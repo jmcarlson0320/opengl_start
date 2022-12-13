@@ -3,9 +3,78 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-const int SCALE = 3;
-const int WIDTH = 256;
-const int HEIGHT = 256;
+#include "load_shaders.h"
+#include "VertexBuffer.h"
+#include "IndexBuffer.h"
+#include "VertexArray.h"
+
+const int SCALE = 4;
+const int WIDTH = 320;
+const int HEIGHT = 240;
+
+GLuint load_passthrough_shaders()
+{
+    shader_info info[] = {
+        {GL_VERTEX_SHADER, "shaders/default.vert"},
+        {GL_FRAGMENT_SHADER, "shaders/default.frag"},
+        {GL_NONE, NULL}
+    };
+
+    return load_shaders(info);
+}
+
+VertexArray loadVertexData()
+{
+    GLfloat vertices[] = {
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+         1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+         1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+    };
+
+    GLuint indices[] = {
+        0, 1, 2,
+        3, 2, 0
+    };
+
+    VertexBuffer vertex_buffer;
+    vertex_buffer.init(vertices, 32);
+
+    BufferLayout buffer_layout;
+    buffer_layout.addElem(FLOAT, 3);
+    buffer_layout.addElem(FLOAT, 2);
+    vertex_buffer.setLayout(buffer_layout);
+
+    IndexBuffer index_buffer;
+    index_buffer.init(indices, 6);
+
+    VertexArray triangle;
+    triangle.addVertexBuffer(vertex_buffer);
+    triangle.addIndexBuffer(index_buffer);
+
+    return triangle;
+}
+
+GLuint load_texture_data()
+{
+    GLuint image_data[WIDTH * HEIGHT];
+
+    for (int i = 0; i < WIDTH * HEIGHT; i++) {
+        image_data[i] = i * 1000;
+    }
+
+    image_data[HEIGHT / 2 * WIDTH + WIDTH / 2] = 0xffffffff;
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, image_data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    return textureID;
+}
 
 int main(int argc, char *argv[])
 {
@@ -40,8 +109,27 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    int nx, ny;
+    glfwGetFramebufferSize(window, &nx, &ny);
+    glViewport(0, 0, nx, ny);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+    GLuint shaderID = load_passthrough_shaders();
+    VertexArray triangle = loadVertexData();
+    GLuint textureID = load_texture_data();
+
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(shaderID);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+
+        triangle.bind();
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        triangle.unbind();
 
         glfwSwapBuffers(window);
 
