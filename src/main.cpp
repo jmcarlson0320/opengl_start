@@ -8,9 +8,19 @@
 #include "IndexBuffer.h"
 #include "VertexArray.h"
 
-const int SCALE = 4;
+#include "graphics.h"
+
+const int SCALE = 3;
 const int WIDTH = 320;
 const int HEIGHT = 240;
+
+void initial_setup()
+{
+}
+
+void create_window(unsigned int width, unsigned int height, unsigned int scale)
+{
+}
 
 GLuint load_passthrough_shaders()
 {
@@ -23,9 +33,10 @@ GLuint load_passthrough_shaders()
     return load_shaders(info);
 }
 
-VertexArray loadVertexData()
+VertexArray generate_quad()
 {
     GLfloat vertices[] = {
+        // x      y     z     u     v
         -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
          1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
          1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
@@ -34,7 +45,7 @@ VertexArray loadVertexData()
 
     GLuint indices[] = {
         0, 1, 2,
-        3, 2, 0
+        2, 3, 0
     };
 
     VertexBuffer vertex_buffer;
@@ -48,22 +59,23 @@ VertexArray loadVertexData()
     IndexBuffer index_buffer;
     index_buffer.init(indices, 6);
 
-    VertexArray triangle;
-    triangle.addVertexBuffer(vertex_buffer);
-    triangle.addIndexBuffer(index_buffer);
+    VertexArray quad;
+    quad.addVertexBuffer(vertex_buffer);
+    quad.addIndexBuffer(index_buffer);
 
-    return triangle;
+    return quad;
 }
 
 GLuint load_texture_data()
 {
-    GLuint image_data[WIDTH * HEIGHT];
+    int image_data[WIDTH * HEIGHT];
 
-    for (int i = 0; i < WIDTH * HEIGHT; i++) {
-        image_data[i] = i * 1000;
-    }
-
-    image_data[HEIGHT / 2 * WIDTH + WIDTH / 2] = 0xffffffff;
+    Bitmap canvas = bitmap_create(WIDTH, HEIGHT, image_data);
+    graphics_output_set(&canvas);
+    draw_fill_rect(0, 0, WIDTH, HEIGHT, 0x000000ff);
+    draw_circle(WIDTH / 2, HEIGHT / 2, 5, 0x0f0fafff);
+    draw_fill_rect(34, 67, 67, 80, 0x544653ff);
+    draw_line(100, 0, 200, 200, 0xff1f04ff);
 
     GLuint textureID;
     glGenTextures(1, &textureID);
@@ -96,8 +108,8 @@ int main(int argc, char *argv[])
     }
 
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
-    /*glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);*/
-    /*glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);*/
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 
     glfwMakeContextCurrent(window);
 
@@ -116,20 +128,19 @@ int main(int argc, char *argv[])
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     GLuint shaderID = load_passthrough_shaders();
-    VertexArray triangle = loadVertexData();
+    VertexArray quad = generate_quad();
     GLuint textureID = load_texture_data();
+    glActiveTexture(GL_TEXTURE0);
 
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderID);
-
-        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureID);
 
-        triangle.bind();
+        quad.bind();
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        triangle.unbind();
+        quad.unbind();
 
         glfwSwapBuffers(window);
 
